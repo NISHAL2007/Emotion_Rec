@@ -46,7 +46,7 @@ class CoachEngine:
     Decoupled Embodied-Cognition Coaching Engine.
     Provides debounced per-frame micro-action suggestions and rolling-window session trend analysis.
     """
-    def __init__(self, debounce_seconds=4.5, window_seconds=60.0, trend_interval=12.0):
+    def __init__(self, debounce_seconds=4.5, window_seconds=60.0, trend_interval=10.0, smoothing_frames=5):
         self.micro_actions = MICRO_ACTION_VARIANTS
         self.debounce_seconds = debounce_seconds
         self.window_seconds = window_seconds
@@ -58,45 +58,47 @@ class CoachEngine:
         self.current_micro_action = ""
         self.last_variant_index = {emotion: -1 for emotion in MICRO_ACTION_VARIANTS}
         
+        # Temporal smoothing deque to prevent single-frame flickering
+        self.smoothing_buffer = deque(maxlen=smoothing_frames)
+
         # Rolling time window state: stores (timestamp, emotion)
         self.history_window = deque()
         self.last_trend_time = 0.0
         self.current_trend_insight = "Initializing session trend tracking..."
         self.emotion_shift_count = 0
-        self.recent_previous_emotion = None
+        self.stable_previous_emotion = None
 
     def update(self, active_emotions):
         """
         Updates coaching state based on current frame detected emotions.
-        active_emotions: list of emotion label strings present in frame
-        Returns:
-            (micro_action_text, trend_insight_text)
         """
         now = time.time()
+        raw_emotion = active_emotions[0] if active_emotions else "Neutral"
         
-        # Pick primary emotion in frame (if multiple faces, use first or dominant)
-        primary_emotion = active_emotions[0] if active_emotions else "Neutral"
+        # 1. Temporal Smoothing (Majority vote over recent N frames)
+        self.smoothing_buffer.append(raw_emotion)
+        smoothed_emotion = Counter(self.smoothing_buffer).most_common(1)[0][0]
         
-        # 1. Rolling Window History Update
-        self.history_window.append((now, primary_emotion))
+        # 2. Rolling Window History Update with smoothed emotion
+        self.history_window.append((now, smoothed_emotion))
         while self.history_window and (now - self.history_window[0][0]) > self.window_seconds:
             self.history_window.popleft()
 
-        # Track emotion shifts
-        if self.recent_previous_emotion and primary_emotion != self.recent_previous_emotion:
+        # Track stable emotion shifts
+        if self.stable_previous_emotion and smoothed_emotion != self.stable_previous_emotion:
             self.emotion_shift_count += 1
-        self.recent_previous_emotion = primary_emotion
+        self.stable_previous_emotion = smoothed_emotion
 
-        # 2. Debounced Micro-Action Selection
+        # 3. Debounced Micro-Action Selection
         time_elapsed = now - self.last_micro_action_time
-        emotion_changed = (primary_emotion != self.last_emotion)
+        emotion_changed = (smoothed_emotion != self.last_emotion)
         
         if emotion_changed or time_elapsed >= self.debounce_seconds:
-            self.current_micro_action = self._get_next_variant(primary_emotion)
+            self.current_micro_action = self._get_next_variant(smoothed_emotion)
             self.last_micro_action_time = now
-            self.last_emotion = primary_emotion
+            self.last_emotion = smoothed_emotion
 
-        # 3. Rolling Window Session Trend Evaluation
+        # 4. Rolling Window Session Trend Evaluation
         if (now - self.last_trend_time) >= self.trend_interval:
             self.current_trend_insight = self._evaluate_trends(now)
             self.last_trend_time = now
@@ -104,9 +106,6 @@ class CoachEngine:
         return self.current_micro_action, self.current_trend_insight
 
     def _get_next_variant(self, emotion):
-        """
-        Selects next micro-action variant ensuring non-repetitive rotation.
-        """
         variants = self.micro_actions.get(emotion, self.micro_actions['Neutral'])
         last_idx = self.last_variant_index.get(emotion, -1)
         next_idx = (last_idx + 1) % len(variants)
@@ -114,9 +113,6 @@ class CoachEngine:
         return variants[next_idx]
 
     def _evaluate_trends(self, now):
-        """
-        Analyzes recent 60-second window to detect sustained emotions, rapid shifts, or trends.
-        """
         if not self.history_window:
             return "Observing emotional patterns..."
 
@@ -138,8 +134,9 @@ class CoachEngine:
 
         # Pattern 2: Frequent Emotion Switching in recent 30 seconds
         recent_30s = [e for t, e in self.history_window if (now - t) <= 30.0]
+        # Count distinct transitions in smoothed series
         recent_shifts = sum(1 for i in range(1, len(recent_30s)) if recent_30s[i] != recent_30s[i-1])
-        if recent_shifts >= 4:
+        if recent_shifts >= 8:
             return f"{recent_shifts} emotion shifts in 30s — high engagement or stress."
 
         # Pattern 3: Dominant Shift / Balanced State
@@ -149,9 +146,6 @@ class CoachEngine:
         return f"Recent Trend: Mostly {top_emotion} ({int(top_ratio * 100)}% of last minute)"
 
     def get_exit_summary(self):
-        """
-        Returns final coaching trend summary for session exit report.
-        """
         if not self.history_window:
             return {
                 'total_shifts': self.emotion_shift_count,

@@ -11,12 +11,13 @@ from config import DEFAULT_SKIP_FRAMES, MODEL_PATH
 class VideoProcessor:
     """
     Main Real-Time Video Processor integrating Face Detection, CNN Inference,
-    Visual Overlays, Embodied Cognition Coach Engine, Frame Skipping, and Analytics.
+    Visual Overlays, Embodied Cognition Coach Engine, Mirror Flipping, and Analytics.
     """
-    def __init__(self, source=0, detector_backend='mediapipe', model_path=MODEL_PATH, skip_frames=DEFAULT_SKIP_FRAMES, enable_coach=True):
+    def __init__(self, source=0, detector_backend='mediapipe', model_path=MODEL_PATH, skip_frames=DEFAULT_SKIP_FRAMES, enable_coach=True, flip_horizontal=True):
         self.source = source
         self.skip_frames = max(1, skip_frames)
         self.enable_coach = enable_coach
+        self.flip_horizontal = flip_horizontal
         
         print(f"[VideoProcessor] Initializing FaceDetector ({detector_backend})...")
         self.detector = FaceDetector(backend=detector_backend)
@@ -60,6 +61,10 @@ class VideoProcessor:
                 if not ret or frame is None:
                     print("[VideoProcessor] End of stream or empty frame received.")
                     break
+
+                # Flip frame horizontally for intuitive mirror view on webcams
+                if self.flip_horizontal and isinstance(self.source, int):
+                    frame = cv2.flip(frame, 1)
 
                 self.frame_counter += 1
                 fps_frame_count += 1
@@ -149,7 +154,6 @@ class VideoProcessor:
             cap.release()
             cv2.destroyAllWindows()
 
-            # Attach coach summary to session stats before reporting
             if self.coach:
                 self.stats.set_coach_summary(self.coach.get_exit_summary())
                 
