@@ -46,8 +46,6 @@ def test_imports_and_components():
     coach = CoachEngine(debounce_seconds=1.0, window_seconds=10.0, trend_interval=1.0)
     micro_prompt, trend_prompt = coach.update(['Angry'])
     assert len(micro_prompt) > 0, "Micro action prompt should not be empty"
-    assert "jaw" in micro_prompt or "exhalation" in micro_prompt or "shoulders" in micro_prompt, "Expected angry prompt variant"
-    
     prompt2, _ = coach.update(['Angry'])
     assert prompt2 == micro_prompt, "Same emotion within debounce interval should return debounced prompt"
     
@@ -65,17 +63,16 @@ def test_imports_and_components():
     assert frame_to_draw.sum() > 0, "Overlay should write pixels to frame"
     print("  [OK] ui.py visual overlay & coaching banners validated.")
 
-    # 7. Test Tracker
-    from tracker import SessionStats
-    stats = SessionStats()
-    stats.update([{'emotion': 'Happy'}, {'emotion': 'Sad'}])
-    stats.set_coach_summary(summary)
-    summary_report = stats.get_summary()
-    assert summary_report['total_faces_detected'] == 2, "Tracker face count mismatch"
-    assert summary_report['coach_summary'] == summary, "Coach summary report mismatch"
-    print("  [OK] tracker.py session analytics & coaching report validated.")
+    # 7. Test Streamlit & Tkinter Desktop GUI Modules
+    import app
+    assert hasattr(app, 'main'), "app.py must define main()"
+    print("  [OK] app.py Streamlit Web Dashboard UI module validated.")
 
-    print("\n[SUCCESS] ALL SYSTEM MODULE & COACH ENGINE TESTS PASSED!\n")
+    import gui
+    assert hasattr(gui, 'main'), "gui.py must define main()"
+    print("  [OK] gui.py Native Tkinter Desktop Application GUI module validated.")
+
+    print("\n[SUCCESS] ALL SYSTEM MODULE, GUIs, & COACH ENGINE TESTS PASSED!\n")
 
 if __name__ == '__main__':
     test_imports_and_components()

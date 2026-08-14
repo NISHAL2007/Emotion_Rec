@@ -18,7 +18,7 @@ EMOTION_COLORS = {
 IMAGE_SIZE = (48, 48)
 INPUT_SHAPE = (48, 48, 1)
 
-# Default File Paths
+import os
 import cv2
 
 # Default File Paths
