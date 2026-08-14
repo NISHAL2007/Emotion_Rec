@@ -28,26 +28,19 @@ st.markdown("""
     .stAppHeader {
         background-color: rgba(14, 17, 23, 0.8);
     }
-    .metric-card {
-        background: #1E222D;
-        border-radius: 10px;
-        padding: 15px;
-        border: 1px solid #2E3440;
-        text-align: center;
-    }
     .coach-card {
         background: linear-gradient(135deg, #1E2640 0%, #111827 100%);
         border-left: 5px solid #00E6C3;
         border-radius: 8px;
-        padding: 16px;
-        margin-bottom: 12px;
+        padding: 14px;
+        margin-bottom: 10px;
     }
     .trend-card {
         background: linear-gradient(135deg, #372A14 0%, #1E1810 100%);
         border-left: 5px solid #FFB800;
         border-radius: 8px;
-        padding: 16px;
-        margin-bottom: 12px;
+        padding: 14px;
+        margin-bottom: 10px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -74,9 +67,7 @@ def main():
 
     enable_coach = st.sidebar.checkbox("Enable AI Coach Engine", value=True)
     enable_mirror = st.sidebar.checkbox("Mirror Webcam Feed", value=True)
-
     camera_index = st.sidebar.number_input("Webcam Index", min_value=0, max_value=5, value=0)
-
     run_system = st.sidebar.toggle("Start Camera Stream", value=False)
 
     # Main Layout Columns
@@ -94,7 +85,6 @@ def main():
         chart_placeholder = st.empty()
 
     if run_system:
-        # Initialize Backend Components
         detector = FaceDetector(backend=detector_choice)
         predictor = EmotionPredictor(model_path=MODEL_PATH)
         overlay = VisualOverlay()
@@ -111,6 +101,7 @@ def main():
         fps_start = time.time()
         fps_count = 0
         current_fps = 0.0
+        last_micro_text, last_trend_text = "", ""
 
         try:
             while run_system:
@@ -183,45 +174,36 @@ def main():
 
                 # Convert BGR to RGB for Streamlit display
                 rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                video_placeholder.image(rgb_frame, channels="RGB", use_container_width=True)
+                video_placeholder.image(rgb_frame, channels="RGB")
 
-                # Update Streamlit Analytics UI Cards
-                if enable_coach:
-                    coach_placeholder.markdown(f"""
-                    <div class="coach-card">
-                        <h4 style="margin:0; color:#00E6C3;">🏋️ Micro-Action Prompt</h4>
-                        <p style="font-size: 1.15rem; margin-top:6px; font-weight:600;">{micro_text}</p>
-                    </div>
-                    """, unsafe_allow_html=True)
+                # Throttle Streamlit Markdown & Metric updates to 5 Hz (every 6 frames) to prevent UI lag
+                if frame_counter % 6 == 0:
+                    if enable_coach and (micro_text != last_micro_text or trend_text != last_trend_text):
+                        coach_placeholder.markdown(f"""
+                        <div class="coach-card">
+                            <h4 style="margin:0; color:#00E6C3;">🏋️ Micro-Action Prompt</h4>
+                            <p style="font-size: 1.1rem; margin-top:4px; font-weight:600;">{micro_text}</p>
+                        </div>
+                        """, unsafe_allow_html=True)
 
-                    trend_placeholder.markdown(f"""
-                    <div class="trend-card">
-                        <h4 style="margin:0; color:#FFB800;">📈 Rolling Window Trend</h4>
-                        <p style="font-size: 1.05rem; margin-top:6px;">{trend_text}</p>
-                    </div>
-                    """, unsafe_allow_html=True)
+                        trend_placeholder.markdown(f"""
+                        <div class="trend-card">
+                            <h4 style="margin:0; color:#FFB800;">📈 Rolling Window Trend</h4>
+                            <p style="font-size: 1.0rem; margin-top:4px;">{trend_text}</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        last_micro_text, last_trend_text = micro_text, trend_text
 
-                # Metrics Row
-                with metrics_placeholder.container():
-                    m1, m2, m3 = st.columns(3)
-                    m1.metric("FPS", f"{current_fps:.1f}")
-                    m2.metric("Active Faces", len(cached_predictions))
                     dominant = cached_predictions[0]['emotion'] if cached_predictions else "None"
-                    m3.metric("Current Emotion", dominant)
-
-                # Emotion Distribution Chart
-                summary = stats.get_summary()
-                df_chart = pd.DataFrame(
-                    list(summary['breakdown'].items()),
-                    columns=["Emotion", "Detections"]
-                )
-                chart_placeholder.bar_chart(df_chart.set_index("Emotion"))
+                    metrics_placeholder.markdown(
+                        f"**FPS:** `{current_fps:.1f}` | **Active Faces:** `{len(cached_predictions)}` | **Current Emotion:** `{dominant}`"
+                    )
 
         finally:
             cap.release()
             st.success("Webcam stream stopped.")
 
-            # Print Session End Summary
             if coach:
                 stats.set_coach_summary(coach.get_exit_summary())
             
