@@ -240,7 +240,6 @@ with gr.Blocks(css=custom_css, title="Real-Time Facial Emotion Detection & AI Co
                         sources=["webcam"],
                         type="numpy",
                         label="Live Camera Feed",
-                        streaming=True,
                         elem_id="video_feed"
                     )
                 with gr.Column(scale=5):
@@ -257,7 +256,9 @@ with gr.Blocks(css=custom_css, title="Real-Time Facial Emotion Detection & AI Co
             webcam_input.stream(
                 fn=process_webcam_stream,
                 inputs=[webcam_input],
-                outputs=[webcam_output, coach_html_out, webcam_prob]
+                outputs=[webcam_output, coach_html_out, webcam_prob],
+                time_limit=30,
+                stream_every=0.1
             )
 
         with gr.TabItem("🖼️ Image Upload & Analysis"):
@@ -287,4 +288,6 @@ with gr.Blocks(css=custom_css, title="Real-Time Facial Emotion Detection & AI Co
             )
 
 if __name__ == "__main__":
-    demo.queue(default_concurrency_limit=10).launch(share=False)
+    demo.launch()
+
+
