@@ -25,13 +25,13 @@ g_state = {
     "fps_counter": 0
 }
 
-def process_emotion_frame(image):
+def process_webcam_stream(image):
     """
-    Ultra-Fast Gradio Stream Processor.
+    Ultra-Fast Gradio Stream Processor for Live Webcam.
     Optimized for high-FPS video streaming with resolution clamping and prediction caching.
     """
     if image is None:
-        return None, "<div class='card-box'>⚠️ Waiting for active video stream...</div>", {}
+        return None, "<div style='background: #1E293B; padding: 14px; border-radius: 8px; color: #94A3B8;'>⚠️ Waiting for active video stream...</div>", {}
 
     now = time.time()
     g_state["fps_counter"] += 1
@@ -51,7 +51,7 @@ def process_emotion_frame(image):
 
     frame_bgr = cv2.cvtColor(image_resized, cv2.COLOR_RGB2BGR)
 
-    # 2. Face Detection & CNN Prediction Caching (runs CNN every 2 frames for maximum FPS)
+    # 2. Face Detection & CNN Prediction Caching (evaluates CNN every 2 frames for maximum FPS)
     if g_state["frame_count"] % 2 == 0 or not g_state["cached_preds"]:
         faces = detector.detect_faces(frame_bgr)
         new_preds = []
@@ -121,6 +121,69 @@ def process_emotion_frame(image):
     else:
         probabilities = {label: 0.0 for label in EMOTION_LABELS}
 
+    return output_rgb, coach_html, probabilities
+
+def process_static_image(image):
+    """
+    Dedicated Static Photo Processor.
+    Analyzes uploaded image independently without video caching state contamination.
+    """
+    if image is None:
+        return None, "<div style='background: #1E293B; padding: 14px; border-radius: 8px; color: #94A3B8;'>Please upload an image file.</div>", {}
+
+    # Downscale high-resolution uploaded images for optimal display and processing
+    h_orig, w_orig = image.shape[:2]
+    if w_orig > 800 or h_orig > 800:
+        scale = 800.0 / max(w_orig, h_orig)
+        new_w, new_h = int(w_orig * scale), int(h_orig * scale)
+        image_proc = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_AREA)
+    else:
+        image_proc = image.copy()
+
+    annotated_bgr = cv2.cvtColor(image_proc, cv2.COLOR_RGB2BGR)
+
+    # Detect faces directly on uploaded image
+    faces = detector.detect_faces(annotated_bgr)
+    predictions = []
+
+    for face_info in faces:
+        label, conf, probs = predictor.predict(face_info['crop'])
+        predictions.append({
+            'box': face_info['box'],
+            'emotion': label,
+            'confidence': conf,
+            'probabilities': probs
+        })
+
+    if predictions:
+        active_emotions = [p['emotion'] for p in predictions]
+        static_coach = CoachEngine()
+        micro_prompt, trend_prompt = static_coach.update(active_emotions)
+
+        is_low_light, _ = overlay.check_low_light(annotated_bgr)
+        for pred in predictions:
+            x, y, w, h = pred['box']
+            overlay.draw_face_overlay(annotated_bgr, x, y, w, h, pred['emotion'], pred['confidence'], pred['probabilities'])
+
+        overlay.draw_hud(annotated_bgr, fps=30.0, face_count=len(predictions), is_low_light=is_low_light)
+        overlay.draw_coaching_overlays(annotated_bgr, micro_prompt, trend_prompt)
+
+        coach_html = f"""
+        <div style="background: linear-gradient(135deg, #1E2640 0%, #111827 100%); border-left: 5px solid #00E6C3; padding: 14px; border-radius: 8px; margin-bottom: 10px;">
+            <h4 style="margin: 0; color: #00E6C3; font-size: 1rem;">🏋️ Micro-Action Suggestion</h4>
+            <p style="margin-top: 6px; font-size: 1.1rem; font-weight: 600; color: #FFFFFF;">{micro_prompt}</p>
+        </div>
+        """
+        probabilities = {k: float(v) for k, v in predictions[0]['probabilities'].items()}
+    else:
+        coach_html = """
+        <div style="background: #371414; border-left: 5px solid #FF5252; padding: 14px; border-radius: 8px; color: #FFFFFF;">
+            ⚠️ No faces detected in uploaded photo. Ensure face is clearly visible and well-lit.
+        </div>
+        """
+        probabilities = {label: 0.0 for label in EMOTION_LABELS}
+
+    output_rgb = cv2.cvtColor(annotated_bgr, cv2.COLOR_BGR2RGB)
     return output_rgb, coach_html, probabilities
 
 # Custom Dark Glassmorphism CSS for Premium Gradio UI
@@ -196,7 +259,7 @@ with gr.Blocks(css=custom_css, title="Real-Time Facial Emotion Detection & AI Co
                     webcam_prob = gr.Label(label="📊 Live Emotion Probabilities", num_top_classes=7)
 
             webcam_input.stream(
-                fn=process_emotion_frame,
+                fn=process_webcam_stream,
                 inputs=[webcam_input],
                 outputs=[webcam_output, coach_html_out, webcam_prob]
             )
@@ -222,7 +285,7 @@ with gr.Blocks(css=custom_css, title="Real-Time Facial Emotion Detection & AI Co
                     upload_prob = gr.Label(label="📊 7-Class Emotion Probabilities", num_top_classes=7)
 
             analyze_btn.click(
-                fn=process_emotion_frame,
+                fn=process_static_image,
                 inputs=[upload_input],
                 outputs=[upload_output, upload_coach_html, upload_prob]
             )
