@@ -13,7 +13,7 @@ class VideoProcessor:
     Main Real-Time Video Processor integrating Face Detection, CNN Inference,
     Visual Overlays, Embodied Cognition Coach Engine, Frame Skipping, and Analytics.
     """
-    def __init__(self, source=0, detector_backend='haar', model_path=MODEL_PATH, skip_frames=DEFAULT_SKIP_FRAMES, enable_coach=True):
+    def __init__(self, source=0, detector_backend='mediapipe', model_path=MODEL_PATH, skip_frames=DEFAULT_SKIP_FRAMES, enable_coach=True):
         self.source = source
         self.skip_frames = max(1, skip_frames)
         self.enable_coach = enable_coach

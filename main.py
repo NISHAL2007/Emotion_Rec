@@ -15,8 +15,8 @@ def parse_args():
         help="Video source: webcam index (e.g. 0) or path to video file"
     )
     parser.add_argument(
-        '--detector', type=str, default='haar', choices=['haar', 'mediapipe'],
-        help="Face detection backend: 'haar' or 'mediapipe'"
+        '--detector', type=str, default='mediapipe', choices=['haar', 'mediapipe'],
+        help="Face detection backend: 'mediapipe' (highly accurate) or 'haar'"
     )
     parser.add_argument(
         '--model', type=str, default=MODEL_PATH,
