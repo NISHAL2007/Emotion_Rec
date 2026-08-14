@@ -126,7 +126,7 @@ def process_webcam_stream(image):
 def process_static_image(image):
     """
     Dedicated Static Photo Processor.
-    Analyzes uploaded image independently without video caching state contamination.
+    Analyzes uploaded image independently with accurate ROI cropping and clear overlay rendering.
     """
     if image is None:
         return None, "<div style='background: #1E293B; padding: 14px; border-radius: 8px; color: #94A3B8;'>Please upload an image file.</div>", {}
@@ -160,13 +160,9 @@ def process_static_image(image):
         static_coach = CoachEngine()
         micro_prompt, trend_prompt = static_coach.update(active_emotions)
 
-        is_low_light, _ = overlay.check_low_light(annotated_bgr)
         for pred in predictions:
             x, y, w, h = pred['box']
             overlay.draw_face_overlay(annotated_bgr, x, y, w, h, pred['emotion'], pred['confidence'], pred['probabilities'])
-
-        overlay.draw_hud(annotated_bgr, fps=30.0, face_count=len(predictions), is_low_light=is_low_light)
-        overlay.draw_coaching_overlays(annotated_bgr, micro_prompt, trend_prompt)
 
         coach_html = f"""
         <div style="background: linear-gradient(135deg, #1E2640 0%, #111827 100%); border-left: 5px solid #00E6C3; padding: 14px; border-radius: 8px; margin-bottom: 10px;">
