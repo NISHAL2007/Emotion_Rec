@@ -108,11 +108,11 @@ class EmotionCoachGUI:
         coach_frame.pack(fill=tk.X, pady=(0, 10), ipady=5)
 
         ttk.Label(coach_frame, text="Micro-Action Suggestion:", style="SubHeader.TLabel").pack(anchor=tk.W, padx=10, pady=(5, 2))
-        self.lbl_micro_action = tk.Label(coach_frame, text="Waiting for active stream...", bg="#2A2A2A", fg="#00E6C3", font=("Segoe UI", 10, "bold"), wraplength=340, justify=tk.LEFT, padding=8)
+        self.lbl_micro_action = tk.Label(coach_frame, text="Waiting for active stream...", bg="#2A2A2A", fg="#00E6C3", font=("Segoe UI", 10, "bold"), wraplength=340, justify=tk.LEFT, padx=8, pady=8)
         self.lbl_micro_action.pack(fill=tk.X, padx=10, pady=(0, 8))
 
         ttk.Label(coach_frame, text="Rolling Window Trend (60s):", style="SubHeader.TLabel").pack(anchor=tk.W, padx=10, pady=(0, 2))
-        self.lbl_trend = tk.Label(coach_frame, text="Initializing session trend tracking...", bg="#2A2A2A", fg="#FFB800", font=("Segoe UI", 9.5), wraplength=340, justify=tk.LEFT, padding=8)
+        self.lbl_trend = tk.Label(coach_frame, text="Initializing session trend tracking...", bg="#2A2A2A", fg="#FFB800", font=("Segoe UI", 9.5), wraplength=340, justify=tk.LEFT, padx=8, pady=8)
         self.lbl_trend.pack(fill=tk.X, padx=10, pady=(0, 5))
 
         # 3. Real-Time Metrics & Emotion Probabilities
