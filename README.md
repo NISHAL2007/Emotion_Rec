@@ -1,3 +1,14 @@
+---
+title: Emotion Rec
+emoji: 🎭
+colorFrom: indigo
+colorTo: blue
+sdk: gradio
+sdk_version: 4.44.0
+app_file: app_gradio.py
+pinned: false
+---
+
 # 🎭 Real-Time Facial Emotion Recognition & AI Coach ⚡
 
 [![Python 3.8+](https://img.shields.io/badge/Python-3.8%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
