@@ -1,0 +1,20 @@
+# Python & Environment
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.env
+
+# Datasets (Large image folders)
+train/
+test/
+
+# Checkpoint backups
+*_backup.h5
+
+# IDE & OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
