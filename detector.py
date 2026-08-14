@@ -15,12 +15,16 @@ class FaceDetector:
         if self.backend in ['mediapipe', 'mp', 'auto']:
             try:
                 import mediapipe as mp
-                self.mp_face_detection = mp.solutions.face_detection
-                self.mp_face = self.mp_face_detection.FaceDetection(
-                    model_selection=0, min_detection_confidence=self.min_confidence
-                )
-                self.backend = 'mediapipe'
-                print("[FaceDetector] Activated MediaPipe Deep Learning Face Detector (High Accuracy).")
+                if hasattr(mp, 'solutions') and hasattr(mp.solutions, 'face_detection'):
+                    self.mp_face_detection = mp.solutions.face_detection
+                    self.mp_face = self.mp_face_detection.FaceDetection(
+                        model_selection=0, min_detection_confidence=self.min_confidence
+                    )
+                    self.backend = 'mediapipe'
+                    print("[FaceDetector] Activated MediaPipe Deep Learning Face Detector (High Accuracy).")
+                else:
+                    print("[Warning] MediaPipe solutions API not available in installed version. Using Tuned Haar Cascade.")
+                    self.backend = 'haar'
             except Exception as e:
                 print(f"[Warning] MediaPipe init failed: {e}. Falling back to tuned Haar Cascade.")
                 self.backend = 'haar'

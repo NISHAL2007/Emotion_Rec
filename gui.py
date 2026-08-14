@@ -256,12 +256,13 @@ class EmotionCoachGUI:
         cv2_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         img_pil = Image.fromarray(cv2_rgb)
         
-        # Fit to video label container
+        # Fit to video label container using OpenCV fast hardware resize
         v_w = self.video_label.winfo_width()
         v_h = self.video_label.winfo_height()
         if v_w > 10 and v_h > 10:
-            img_pil = img_pil.resize((v_w, v_h), Image.Resampling.LANCZOS)
+            cv2_rgb = cv2.resize(cv2_rgb, (v_w, v_h), interpolation=cv2.INTER_LINEAR)
 
+        img_pil = Image.fromarray(cv2_rgb)
         img_tk = ImageTk.PhotoImage(image=img_pil)
         self.video_label.img_tk = img_tk
         self.video_label.config(image=img_tk, text="")
