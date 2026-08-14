@@ -4,20 +4,17 @@ from config import EMOTION_LABELS
 
 class SessionStats:
     """
-    Tracks and computes real-time session statistics including dominant emotion,
-    frame rates, detection counts, and session duration.
+    Tracks session statistics including dominant emotion, FPS metrics,
+    and coaching trend summaries.
     """
     def __init__(self):
         self.start_time = time.time()
         self.total_frames = 0
         self.face_detections_count = 0
         self.emotion_counts = Counter({label: 0 for label in EMOTION_LABELS})
+        self.coach_summary = None
 
     def update(self, detected_faces):
-        """
-        Updates session statistics for the current frame.
-        detected_faces: list of dicts with 'emotion' key
-        """
         self.total_frames += 1
         self.face_detections_count += len(detected_faces)
         
@@ -26,10 +23,13 @@ class SessionStats:
             if emotion in self.emotion_counts:
                 self.emotion_counts[emotion] += 1
 
+    def set_coach_summary(self, coach_summary_dict):
+        """
+        Stores coach engine trend summary for final exit report.
+        """
+        self.coach_summary = coach_summary_dict
+
     def get_summary(self):
-        """
-        Calculates session summary metrics.
-        """
         duration = max(0.1, time.time() - self.start_time)
         avg_fps = self.total_frames / duration if duration > 0 else 0.0
         
@@ -47,25 +47,31 @@ class SessionStats:
             'total_faces_detected': self.face_detections_count,
             'dominant_emotion': dominant_emotion,
             'dominant_percentage': dominant_pct,
-            'breakdown': dict(self.emotion_counts)
+            'breakdown': dict(self.emotion_counts),
+            'coach_summary': self.coach_summary
         }
 
     def print_report(self):
-        """
-        Prints formatted console summary upon session exit.
-        """
         summary = self.get_summary()
         duration_mins = summary['duration_seconds'] / 60.0
         
-        print("\n" + "=" * 60)
-        print("                SESSION STATISTICS REPORT                 ")
-        print("=" * 60)
+        print("\n" + "=" * 65)
+        print("                SESSION STATISTICS & COACH REPORT                 ")
+        print("=" * 65)
         print(f" Total Session Duration : {summary['duration_seconds']:.2f} s ({duration_mins:.2f} mins)")
         print(f" Processed Frames       : {summary['total_frames']}")
         print(f" Average System FPS     : {summary['avg_fps']:.2f} FPS")
         print(f" Total Face Instances   : {summary['total_faces_detected']}")
         print(f" Dominant Emotion       : {summary['dominant_emotion'].upper()} ({summary['dominant_percentage']:.1f}%)")
-        print("-" * 60)
+        
+        if summary.get('coach_summary'):
+            coach_data = summary['coach_summary']
+            print("-" * 65)
+            print(" COACHING TREND OBSERVATION:")
+            print(f"   - Emotion Shifts Count : {coach_data.get('total_shifts', 0)}")
+            print(f"   - Final Observation    : {coach_data.get('final_observation', 'N/A')}")
+            
+        print("-" * 65)
         print(" EMOTION FREQUENCY BREAKDOWN:")
         
         total_instances = sum(summary['breakdown'].values())
@@ -74,4 +80,4 @@ class SessionStats:
             bar = "█" * int(pct / 4)
             print(f"   - {emotion:<10}: {count:>5} detections  ({pct:>5.1f}%)  {bar}")
             
-        print("=" * 60 + "\n")
+        print("=" * 65 + "\n")

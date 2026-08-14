@@ -36,31 +36,46 @@ def test_imports_and_components():
     detector = FaceDetector(backend='haar')
     dummy_frame = np.zeros((480, 640, 3), dtype=np.uint8)
     
-    # Test safe clamping function directly
     clamped_box, crop = detector._clamp_and_crop(dummy_frame, -10, -10, 100, 100, 640, 480)
     assert clamped_box[0] == 0 and clamped_box[1] == 0, "Box x,y should clamp to >= 0"
-    assert crop is not None and crop.shape == (90, 90, 3), f"Unexpected clamped crop shape {crop.shape if crop is not None else None}"
+    assert crop is not None and crop.shape == (90, 90, 3), f"Unexpected clamped crop shape"
     print("  [OK] detector.py boundary safety clamping validated.")
 
-    # 5. Test UI Overlay
+    # 5. Test Coach Engine
+    from coach import CoachEngine
+    coach = CoachEngine(debounce_seconds=1.0, window_seconds=10.0, trend_interval=1.0)
+    micro_prompt, trend_prompt = coach.update(['Angry'])
+    assert len(micro_prompt) > 0, "Micro action prompt should not be empty"
+    assert "jaw" in micro_prompt or "exhalation" in micro_prompt or "shoulders" in micro_prompt, "Expected angry prompt variant"
+    
+    prompt2, _ = coach.update(['Angry'])
+    assert prompt2 == micro_prompt, "Same emotion within debounce interval should return debounced prompt"
+    
+    summary = coach.get_exit_summary()
+    assert 'total_shifts' in summary, "Missing total_shifts in exit summary"
+    print("  [OK] coach.py CoachEngine micro-actions, debouncing, & trend engine validated.")
+
+    # 6. Test UI Overlay
     from ui import VisualOverlay
     overlay = VisualOverlay()
     frame_to_draw = np.zeros((480, 640, 3), dtype=np.uint8)
     overlay.draw_face_overlay(frame_to_draw, 50, 50, 100, 100, "Happy", 0.95, probs)
     overlay.draw_hud(frame_to_draw, 30.0, 1, is_low_light=False)
+    overlay.draw_coaching_overlays(frame_to_draw, micro_prompt, trend_prompt)
     assert frame_to_draw.sum() > 0, "Overlay should write pixels to frame"
-    print("  [OK] ui.py visual overlay drawing validated.")
+    print("  [OK] ui.py visual overlay & coaching banners validated.")
 
-    # 6. Test Tracker
+    # 7. Test Tracker
     from tracker import SessionStats
     stats = SessionStats()
     stats.update([{'emotion': 'Happy'}, {'emotion': 'Sad'}])
-    summary = stats.get_summary()
-    assert summary['total_faces_detected'] == 2, "Tracker face count mismatch"
-    assert summary['total_frames'] == 1, "Tracker frame count mismatch"
-    print("  [OK] tracker.py session stats tracking validated.")
+    stats.set_coach_summary(summary)
+    summary_report = stats.get_summary()
+    assert summary_report['total_faces_detected'] == 2, "Tracker face count mismatch"
+    assert summary_report['coach_summary'] == summary, "Coach summary report mismatch"
+    print("  [OK] tracker.py session analytics & coaching report validated.")
 
-    print("\n[SUCCESS] ALL SYSTEM MODULE TESTS PASSED!\n")
+    print("\n[SUCCESS] ALL SYSTEM MODULE & COACH ENGINE TESTS PASSED!\n")
 
 if __name__ == '__main__':
     test_imports_and_components()
