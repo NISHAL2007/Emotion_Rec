@@ -1,7 +1,12 @@
-tensorflow
+tensorflow-cpu
 opencv-python-headless
 mediapipe
+streamlit
 gradio
 pillow
 pandas
 numpy<2.0.0
+
+
+
+
